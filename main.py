@@ -1,21 +1,26 @@
 import telebot
 from telebot import types, TeleBot
 import time
+import matplotlib
 import matplotlib.pyplot as plt
 import io
 import json
 import re
-import os
 from collections import Counter
 from datetime import datetime
-# Initialize the Telegram bot (add your TOKEN)
-bot: TeleBot = telebot.TeleBot(" ")
+import calendar
+import zipfile
+
+calendar.setfirstweekday(calendar.MONDAY)
+matplotlib.use('Agg')
+# Initialize the Telegram bot
+bot: TeleBot = telebot.TeleBot("YOUR_TOKEN")
 # Global variables
 username = None
 nickname = None
-WORD_ENTER, COUNT_RESULTS = range(2)
-
 filename = None
+
+WORD_ENTER, COUNT_RESULTS = range(2)
 
 
 # Handle the /start command
@@ -55,34 +60,48 @@ def handle_all_messages(message):
 def handle_file(message):
     try:
         global filename
-        # Check if the file is a JSON file
-        if not message.document.file_name.endswith(".json"):
-            bot.send_message(message.chat.id, "Please send a valid JSON file.")
+        global nickname
+        global username
+
+        username = message.from_user.username
+        nickname = message.from_user.first_name or message.from_user.last_name
+
+        # Check if the file is a ZIP file
+        if not message.document.file_name.endswith(".zip"):
+            bot.send_message(message.chat.id, "Please send a valid ZIP file.")
             return
 
-        # Analyze the JSON file and prepare for further actions
+        # Analyze the ZIP file and prepare for further actions
         analysis_message = bot.send_message(message.chat.id,
-                                            "Analyzing your JSON file... ⏳\n\n<b><i>It will take 20-30 seconds</i></b>",
+                                            "Analyzing your ZIP file... ⏳\n\n<b><i>It will take 20-30 seconds</i></b>",
                                             parse_mode="HTML")
         # To reduce CPU Usage (or just delaying message)
         time.sleep(0)
 
         # Choose a filename based on available information
-        global nickname
-        global username
-        if nickname:
+        if username:
             filename = f"{username}.json"
-        elif username:
+        elif nickname:
             filename = f"{nickname}.json"
         else:
-            unknown_file_count = 1
-            filename = f"user{unknown_file_count}.json"
+            filename = "default.json"  # Provide a default filename if no username or nickname is available
 
-        # Download and save message file with chosen filename
+        # Download the ZIP file
         file_info = bot.get_file(message.document.file_id)
-        message_file = bot.download_file(file_info.file_path)
-        with open(filename, "wb") as fhandle:
-            fhandle.write(message_file)
+        zip_file = bot.download_file(file_info.file_path)
+
+        # Extract the contents of the ZIP file
+        with zipfile.ZipFile(io.BytesIO(zip_file), 'r') as zip_ref:
+            # Assume there is only one JSON file in the ZIP for simplicity
+            json_filename = zip_ref.namelist()[0]
+            json_data = zip_ref.read(json_filename)
+
+        # Convert bytes to string (assumes the content is a valid JSON)
+        json_str = json_data.decode('utf-8')
+
+        # Save the JSON data with the chosen filename
+        with open(filename, "w", encoding="utf-8") as fhandle:
+            fhandle.write(json_str)
 
         # Delete the "Analyzing..." message
         bot.delete_message(message.chat.id, analysis_message.message_id)
@@ -109,7 +128,6 @@ def handle_file(message):
         bot.send_message(message.chat.id, f"An error occurred: {str(e)}")
 
 
-# Handle callback queries for different analysis options
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_message(callback):
     # Define global variables
@@ -117,13 +135,10 @@ def callback_message(callback):
     global username
     global filename
     # Choose a filename based on available information
-    if nickname:
+    if username:
         filename = f"{username}.json"
-    elif username:
+    elif nickname:
         filename = f"{nickname}.json"
-    else:
-        unknown_file_count = 1
-        filename = f"user{unknown_file_count}.json"
 
     # Analyze total message count and send
     if callback.data == "total_messages":
@@ -138,25 +153,19 @@ def callback_message(callback):
                             message_type = message['type']
                             if message_type == "message":
                                 total_message_count += 1
-
-        bot.send_message(callback.message.chat.id, f"Total messages: {total_message_count}")
+        print(f"Username: {username}")
+        print(f"Nickname: {nickname}")
+        bot.send_message(callback.message.chat.id, f"📊 Total messages: {total_message_count}")
 
     # Analyze sent vs. received messages and send with pie-chart
     elif callback.data == "sent_received":
         # Initialize variables for counting sent and total messages
         sent_count = 0
         total_message_count = 0
-        user = None  # Variable to store the user's name (nickname or username)
 
         # Open the JSON file for reading
         with open(filename, "r", encoding="utf-8") as f:
-            data = json.load(f)  # Load JSON data from the file
-            if nickname:
-                user = nickname  # Set user to nickname if available
-            elif username:
-                user = username  # Set user to username if nickname is not available
-
-            # Loop through chats and messages in the JSON data
+            data = json.load(f)
             for chat in data['chats']['list']:
                 if 'messages' in chat:
                     for message in chat['messages']:
@@ -165,16 +174,15 @@ def callback_message(callback):
                             type = message['type']
                             if type == "message":
                                 total_message_count += 1  # Increment the total message count
-
             # Loop through chats and messages again to count sent messages
             for chat in data['chats']['list']:
                 if 'messages' in chat:
                     for message in chat['messages']:
                         if 'from' in message:
                             # Extract the sender's name and convert to lowercase
-                            message_from = message['from'].lower()
-                            if message_from == f"Abrorkhujaᅠ":
-                                sent_count += 1  # Increment sent_count if message is from 'Abrorkhujaᅠ'
+                            message_from = message['from']
+                            if message_from == nickname or message_from == username:
+                                sent_count += 1
 
         # Calculate received messages count
         received_count = total_message_count - sent_count
@@ -267,7 +275,7 @@ def callback_message(callback):
                             # If text is a string, leave it as is
                             text = str(text)
 
-                        # Regular expression to find emojis specifically
+                        # Use an improved regular expression to find emojis specifically
                         emojis = re.findall(r'[\U0001F000-\U0001F9FF]', text)
 
                         all_emoji_counts.update(emojis)
@@ -295,8 +303,62 @@ def callback_message(callback):
 
         # Send the text message with the bar chart image
         bot.send_photo(callback.message.chat.id, open(chart_image_path, 'rb'),
-                       f"Top 10 used emojis:\n\n{result_message_emoji}")
+                       f"🔝Top 10 used emojis:\n\n{result_message_emoji}")
+    elif callback.data == "active_days":
+        with open(filename, 'r', encoding='utf-8') as file:
+            data = json.load(file)
 
+        # Counter to store the frequency of messages on each day of the week
+        activity_by_day = Counter()
+
+        for chat in data['chats']['list']:
+            if 'messages' in chat:
+                for message in chat['messages']:
+                    if 'date' in message:
+                        # Extract the day of the week from the timestamp
+                        timestamp = int(message['date_unixtime'])
+                        day_of_week = datetime.utcfromtimestamp(timestamp).weekday()
+
+                        # Update the counter
+                        activity_by_day.update([day_of_week])
+
+        # Get the names of the days of the week
+        days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+        # Extract data for plotting
+        message_counts = [activity_by_day.get(day, 0) for day in range(7)]
+
+        # Find the index of the most active day
+        most_active_index = max(range(7), key=message_counts.__getitem__)
+
+        # Define colors for the bar graph
+        bar_colors = ['lightskyblue' if i != most_active_index else 'deepskyblue' for i in range(7)]
+
+        # Create a bar graph
+        plt.figure(figsize=(10, 6))
+        plt.bar(days_of_week, message_counts, color=bar_colors, alpha=0.7)
+        plt.xlabel('Day of the Week')
+        plt.ylabel('Message Count')
+        plt.title('Message Distribution Throughout the Week')
+
+        # Save the plot to a BytesIO object
+        image_buffer = io.BytesIO()
+        plt.savefig(image_buffer, format='png')
+        plt.close()
+
+        # Move the cursor to the beginning of the BytesIO object
+        image_buffer.seek(0)
+
+        # Create a caption with information about the count of messages for each day of the week
+        caption_text = "\n".join(
+            [f"{i + 1}) {days_of_week[day]}: {count} messages {'🌟' if i == most_active_index else ''}" for
+             i, (day, count) in
+             enumerate(zip(range(7), message_counts))]
+        )
+        caption_text = f'📊🔝 Message Count for Each Day of the Week:\n\n{caption_text}'
+
+        # Send both the caption and the image in one message
+        bot.send_photo(callback.message.chat.id, photo=image_buffer, caption=caption_text)
     elif callback.data == "chat_champs":
         with open(filename, 'r', encoding='utf-8') as file:
             data = json.load(file)
@@ -307,8 +369,9 @@ def callback_message(callback):
             if 'messages' in chat:
                 for message in chat['messages']:
                     if 'from' in message:
+                        # Extract and split sentences
                         user = message['from']
-                        if user == 'Abrorkhujaᅠ':
+                        if user == username or user == nickname:
                             continue
                         elif isinstance(user, list):
                             users = [item.get('from', '') for item in user if isinstance(item, dict)]
@@ -337,12 +400,17 @@ def callback_message(callback):
         plt.close()
 
         # Print the results
+        # Print the results
         result_message_user = "\n".join(
             [f"{i + 1}) {user}: {count} messages" for i, (user, count) in enumerate(top_users)])
 
+        # Manually include the bot's name at the end of the message
+        # Hyperlink to bot
+        # bot_name = "[CacheAnalyzerX](https://t.me/cachestat_bot)"
+
         # Send the text message with the bar chart image
         bot.send_photo(callback.message.chat.id, open(chart_image_path, 'rb'),
-                       f"Top 5 Chat Champions:\n\n{result_message_user}")
+                       f"🚀 Top 5 Chat Champions:\n{result_message_user}")
     elif callback.data == "activity":
         with open(filename, 'r', encoding='utf-8') as file:
             data = json.load(file)
@@ -402,7 +470,7 @@ def callback_message(callback):
                     if 'forwarded_from' in message:
                         # Extract and split sentences
                         user = message['forwarded_from']
-                        if user == 'Abrorkhujaᅠ':
+                        if user == username or user == nickname:
                             continue
                         elif isinstance(user, list):
                             users = [item.get('forwarded_from', '') for item in user if isinstance(item, dict)]
