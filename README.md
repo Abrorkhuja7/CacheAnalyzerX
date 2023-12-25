@@ -29,7 +29,7 @@ To use the Telegram Data Analysis Bot, follow these steps:
 ### Usage
 
 1. Start the bot by running the script: `python telegram_data_analysis_bot.py`
-2. Send your Telegram data file in JSON format to the bot (Please note that if your file is more than 20mb consider sending your file in ZIP format).
+2. Send your Telegram data file in JSON format, in a ZIP archive, to the bot.
 3. Choose from various analysis options using the provided inline buttons.
 
 ## Analysis Options
