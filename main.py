@@ -20,8 +20,6 @@ username = None
 nickname = None
 filename = None
 
-WORD_ENTER, COUNT_RESULTS = range(2)
-
 
 # Handle the /start command
 @bot.message_handler(commands=['start'])
@@ -43,16 +41,6 @@ def help(message):
 
     )
     bot.send_message(message.chat.id, help_text, parse_mode="Markdown")
-
-
-# Handle all messages to capture user information
-@bot.message_handler(func=lambda message: True)
-def handle_all_messages(message):
-    global nickname
-    global username
-
-    username = message.from_user.username
-    nickname = message.from_user.first_name or message.from_user.last_name
 
 
 # Handle files sent by the user
@@ -139,7 +127,9 @@ def callback_message(callback):
         filename = f"{username}.json"
     elif nickname:
         filename = f"{nickname}.json"
-
+    else:
+        filename = "default.json"
+        
     # Analyze total message count and send
     if callback.data == "total_messages":
         total_message_count = 0
