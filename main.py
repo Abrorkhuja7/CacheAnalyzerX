@@ -7,7 +7,7 @@ import io
 import json
 import re
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 import calendar
 import zipfile
 
@@ -414,7 +414,7 @@ def callback_message(callback):
                     if 'date' in message:
                         # Extract the hour from the timestamp
                         timestamp = int(message['date_unixtime'])
-                        hour = datetime.utcfromtimestamp(timestamp).hour
+                        hour = (datetime.utcfromtimestamp(timestamp) + timedelta(hours=5)).hour
 
                         # Update the counter
                         activity_by_hour.update([hour])
