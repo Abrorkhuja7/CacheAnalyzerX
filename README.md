@@ -5,7 +5,6 @@ A Telegram bot for analyzing your Telegram data and providing insights into your
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Features](#features)
 - [Getting Started](#getting-started)
   - [Installation](#installation)
   - [Usage](#usage)
@@ -15,16 +14,6 @@ A Telegram bot for analyzing your Telegram data and providing insights into your
 ## Introduction
 
 Welcome to the Telegram Data Analysis Bot! This bot is designed to help you analyze your Telegram data and extract valuable insights from your messaging history.
-
-## Features
-
-- Total message count analysis
-- Sent vs. received messages analysis with a pie chart
-- Word frequency analysis with a word cloud
-- Most used emoji analysis with a bar chart
-- Chat champions analysis to identify the most active users
-- Peak hours analysis for message distribution throughout the day
-- Forwarded from analysis to find the top users from whom messages are forwarded
 
 ## Getting Started
 
