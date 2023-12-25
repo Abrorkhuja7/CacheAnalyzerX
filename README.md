@@ -21,7 +21,7 @@ Welcome to the Telegram Data Analysis Bot! This bot is designed to help you anal
 
 To use the Telegram Data Analysis Bot, follow these steps:
 
-1. Clone the repository: `git clone https://github.com/your-username/telegram-data-analysis-bot.git`
+1. Clone the repository: `git clone https://github.com/Abrorkhuja7/CacheAnalyzerX.git`
 2. Install dependencies: `pip install -r requirements.txt`
 3. Set up a Telegram bot on [BotFather](https://t.me/botfather) and obtain the token.
 4. Replace the placeholder token in the code with your actual bot token.
