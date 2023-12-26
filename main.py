@@ -107,7 +107,6 @@ def handle_file(message):
         markup.add(types.InlineKeyboardButton("Chat Champions", callback_data="chat_champs"))
         markup.add(types.InlineKeyboardButton("Peak Hours", callback_data="activity"))
         markup.add(types.InlineKeyboardButton("Forwarded from", callback_data="forwarded_from"))
-        markup.add(types.InlineKeyboardButton("Search word", callback_data="search"))
 
         bot.reply_to(message, "Choose what to analyze:", reply_markup=markup)
 
